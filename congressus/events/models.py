@@ -3,7 +3,7 @@ import numpy as np
 
 from autoslug import AutoSlugField
 from django import forms
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
@@ -14,6 +14,8 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from invs.utils import get_sold_invs
+
+from .widgets import HTMLWidget
 
 
 TICKET_DATE_FORMATS = (
@@ -36,6 +38,7 @@ FIELD_TYPES = (
     ('textarea', _('TextArea')),
     ('check', _('CheckBox')),
     ('select', _('Select')),
+    ('html', _('HTML')),
 )
 
 DIRECTIONS = (
@@ -81,6 +84,12 @@ class Event(models.Model):
     discounts = models.ManyToManyField(Discount, related_name='events',
                                       blank=True,
                                       verbose_name=_('discounts'))
+
+    # fields to activate/deactivate tickets sale
+    ticket_sale_enabled = models.BooleanField(_('sale enabled'), default=True)
+    ticket_sale_message = models.TextField(_('sale message'),
+       help_text=_('Message to show when the ticket sale is disabled'),
+       blank=True, null=True)
 
     class Meta:
         verbose_name = _('event')
@@ -143,7 +152,7 @@ class SeatMap(models.Model):
 
 
 class Gate(models.Model):
-    event = models.ForeignKey(Event, related_name='gates', verbose_name=_('event'))
+    event = models.ForeignKey(Event, related_name='gates', verbose_name=_('event'), on_delete=models.CASCADE)
     name = models.CharField(_('name'), max_length=100)
 
     class Meta:
@@ -155,7 +164,7 @@ class Gate(models.Model):
 
 
 class SeatLayout(models.Model):
-    map = models.ForeignKey(SeatMap, related_name='layouts', verbose_name=_('map'))
+    map = models.ForeignKey(SeatMap, related_name='layouts', verbose_name=_('map'), on_delete=models.CASCADE)
     name = models.CharField(_('name'), max_length=300)
     top = models.IntegerField(_('top'), default=0)
     left = models.IntegerField(_('left'), default=0)
@@ -166,7 +175,7 @@ class SeatLayout(models.Model):
                                           'L = Free, _ = Space, R = Reserved'))
 
     column_start_number = models.IntegerField(_('column start number'), default=1)
-    gate = models.ForeignKey(Gate, blank=True, null=True, verbose_name=_('gate'))
+    gate = models.ForeignKey(Gate, blank=True, null=True, verbose_name=_('gate'), on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('seat Layout')
@@ -236,13 +245,13 @@ class SeatLayout(models.Model):
 
 
 class Space(models.Model):
-    event = models.ForeignKey(Event, related_name='spaces', verbose_name=_('event'))
+    event = models.ForeignKey(Event, related_name='spaces', verbose_name=_('event'), on_delete=models.CASCADE)
     name = models.CharField(_('name'), max_length=300)
     slug = AutoSlugField(populate_from='name')
 
     capacity = models.IntegerField(_('capacity'), default=100)
     numbered = models.BooleanField(_('numbered'), default=False)
-    seat_map = models.ForeignKey(SeatMap, related_name='spaces', null=True, blank=True, verbose_name=_('seat map'))
+    seat_map = models.ForeignKey(SeatMap, related_name='spaces', null=True, blank=True, verbose_name=_('seat map'), on_delete=models.CASCADE)
 
     order = models.IntegerField(_('order'), default=0)
 
@@ -260,7 +269,7 @@ class Space(models.Model):
 
 
 class Session(models.Model):
-    space = models.ForeignKey(Space, related_name='sessions', verbose_name=_('space'))
+    space = models.ForeignKey(Space, related_name='sessions', verbose_name=_('space'), on_delete=models.CASCADE)
     name = models.CharField(_('name'), max_length=300)
     slug = AutoSlugField(populate_from='name')
 
@@ -273,8 +282,8 @@ class Session(models.Model):
     window_price = models.FloatField(_('price in the ticket window'), default=10)
     tax = models.IntegerField(_('ticket tax percentage'), default=21)
 
-    template = models.ForeignKey("TicketTemplate", blank=True, null=True, verbose_name=_('template'))
-    thermal_template = models.ForeignKey("ThermalTicketTemplate", blank=True, null=True, verbose_name=_('thermal template'))
+    template = models.ForeignKey("TicketTemplate", blank=True, null=True, verbose_name=_('template'), on_delete=models.CASCADE)
+    thermal_template = models.ForeignKey("ThermalTicketTemplate", blank=True, null=True, verbose_name=_('thermal template'), on_delete=models.CASCADE)
     autoseat_mode = models.CharField(_('autoseat mode'), max_length=300, default='ASC',
             help_text="ASC, DESC, RANDOM or LIST: layout_name1,layout_name2")
 
@@ -339,8 +348,8 @@ class Session(models.Model):
 
 
 class ExtraSession(models.Model):
-    orig = models.ForeignKey(Session, related_name='orig_sessions', verbose_name=_('orig'))
-    extra = models.ForeignKey(Session, related_name='extra_sessions', verbose_name=_('extra'))
+    orig = models.ForeignKey(Session, related_name='orig_sessions', verbose_name=_('orig'), on_delete=models.CASCADE)
+    extra = models.ForeignKey(Session, related_name='extra_sessions', verbose_name=_('extra'), on_delete=models.CASCADE)
     start = models.DateTimeField(_('Start at'))
     end = models.DateTimeField(_('End at'))
     used = models.BooleanField(_('used'), default=False)
@@ -354,7 +363,7 @@ class ExtraSession(models.Model):
 
 
 class ConfirmEmail(models.Model):
-    event = models.OneToOneField(Event, related_name='email', verbose_name=_('event'))
+    event = models.OneToOneField(Event, related_name='email', verbose_name=_('event'), on_delete=models.CASCADE)
     subject = models.CharField(_('subject'), max_length=300)
     body = models.TextField(_('body'))
 
@@ -371,7 +380,7 @@ class ConfirmEmail(models.Model):
 
 
 class EmailAttachment(models.Model):
-    email = models.ForeignKey(ConfirmEmail, related_name='attachs', verbose_name=_('email'))
+    email = models.ForeignKey(ConfirmEmail, related_name='attachs', verbose_name=_('email'), on_delete=models.CASCADE)
     attach = models.FileField(_('attach'), upload_to='attachments')
 
     class Meta:
@@ -380,7 +389,7 @@ class EmailAttachment(models.Model):
 
 
 class InvCode(models.Model):
-    event = models.ForeignKey(Event, related_name='codes', verbose_name=_('event'))
+    event = models.ForeignKey(Event, related_name='codes', verbose_name=_('event'), on_delete=models.CASCADE)
     code = models.CharField(_('code'), max_length=10, blank=True, null=True)
     person = models.CharField(_('for person'), max_length=100, blank=True, null=True)
     used = models.BooleanField(_('used'), default=False)
@@ -395,10 +404,10 @@ class InvCode(models.Model):
 
 
 class TicketField(models.Model):
-    event = models.ForeignKey(Event, related_name='fields', verbose_name=_('event'))
+    event = models.ForeignKey(Event, related_name='fields', verbose_name=_('event'), on_delete=models.CASCADE)
     order = models.IntegerField(_('order'), default=0)
     type = models.CharField(_('type'), max_length=100, choices=FIELD_TYPES, default='text')
-    label = models.CharField(_('label'), max_length=500)
+    label = models.TextField(_('label'))
     help_text = models.CharField(_('help text'), max_length=1000, blank=True, null=True)
     required = models.BooleanField(_('required'), default=False)
     options = models.CharField(_('options'), max_length=500,
@@ -411,9 +420,11 @@ class TicketField(models.Model):
         verbose_name_plural = _('ticket fields')
 
     def form_type(self):
-        choices = ((i, i) for i in map(str.strip, self.options.split(',')))
+        opts = self.options or ''
+        choices = ((i, i) for i in map(str.strip, opts.split(',')))
 
         types = {
+            'html': forms.CharField(widget=HTMLWidget),
             'text': forms.CharField(),
             'textarea': forms.CharField(widget=forms.Textarea),
             'check': forms.BooleanField(),

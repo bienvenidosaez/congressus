@@ -34,12 +34,22 @@
     <p> {{ ev.info }} </p>
     {% endblock %}
 
-    {% block form %}
-    <form method="POST" action="" {% block extraform %}{% endblock %}>
+    {% if not ev.ticket_sale_enabled %}
+      {% block ticket_sale_message %}
+        <div class="alert alert-info text-center">
+          <p>{{ ev.ticket_sale_message }}</p>
+        </div>
+      {% endblock %}
 
-    {% csrf_token %}
-    <div class="row">
-    {% for space in ev.spaces.all %}
+    {% else %}
+
+      {% block form %}
+      <form method="POST" action="" {% block extraform %}{% endblock %}>
+
+      {% csrf_token %}
+      <div class="row">
+      {% for space in ev.spaces.all %}
+
         {% get_value seat_maps_table space.seat_map.id as seat_map_table %}
         <div class="col-sm-6">
             <div class="panel panel-info">
@@ -116,44 +126,45 @@
 
                             </div> <!-- endof row -->
                         {% endfor %}
-                    </div>
-                </div>
-            </div>
+                    </div> <!-- session-table close -->
+                </div> <!-- panel body close -->
+            </div> <!-- panel close -->
             {% block space_extra %}
             {% endblock %}
-        </div>
-    {% endfor %}
-    </div>
+        </div> <!-- endof col -->
 
-    {% block after_sessions %}{% endblock %}
+      {% endfor %} <!-- endfor spaces -->
+      </div> <!-- close spaces row -->
 
+        {% block after_sessions %}{% endblock %}
         {% block total %}
-            <div class="totalinfo text-right">
-                <h2>
-                    {% trans "Total" %}
-                    <span id="total" class="outputbox text-primary">0</span>
-                    €
-                </h2>
-            </div>
-            <br/>
+          <div class="totalinfo text-right">
+            <h2>
+              {% trans "Total" %}
+              <span id="total" class="outputbox text-primary">0</span>
+              €
+              </h2>
+          </div>
+          <br/>
         {% endblock %}
 
-    {% endblock %}
+        {% block personal_info %}
+          <fieldset>
+            <legend>{% trans "Personal info" %}</legend>
+            <div class="reg-form bootstrap">
+              {{ form|crispy }}
+              </div>
+          </fieldset>
+        {% endblock %}
 
-    {% block personal_info %}
-    <fieldset>
-        <legend>{% trans "Personal info" %}</legend>
-        <div class="reg-form bootstrap">
-            {{ form|crispy }}
-        </div>
-    </fieldset>
-    {% endblock %}
+        {% block button %}
+          <button id="btn-continue" type="button" class="btn btn-primary btn-block btn-lg">{% trans "Continue" %}</button>
+        {% endblock %}
 
-    {% block button %}
-    <button id="btn-continue" type="button" class="btn btn-primary btn-block btn-lg">{% trans "Continue" %}</button>
-    {% endblock %}
+      </form>
+      {% endblock %} <!-- form block -->
 
-    </form>
+    {% endif %}
 
     <div id="restrictions" class="hidden">
         {% for w in ev.warnings.all %}

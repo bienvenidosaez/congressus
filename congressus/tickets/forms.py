@@ -26,6 +26,9 @@ class RegisterForm(forms.ModelForm):
         for field in self.session.event().fields.all():
             self.fields[field.label] = field.form_type()
 
+            if field.type == 'html':
+                self.fields[field.label].label = False
+
         # Adding html5 required attr to required fields
         for f in self.fields.values():
             if f.required:
@@ -33,6 +36,9 @@ class RegisterForm(forms.ModelForm):
 
     def clean(self):
         data = super(RegisterForm, self).clean()
+
+        if not self.session.event().ticket_sale_enabled:
+            raise forms.ValidationError(_("Ticket sale isn't enabled"))
 
         if not data['email'] == data['confirm_email']:
             raise forms.ValidationError(_("Emails didn't match"))
@@ -83,12 +89,19 @@ class MPRegisterForm(forms.ModelForm):
         for field in self.event.fields.all():
             self.fields[field.label] = field.form_type()
 
+            if field.type == 'html':
+                self.fields[field.label].label = False
+
+
         # Adding html5 required attr to required fields
         for f in self.fields.values():
             if f.required:
                 f.widget.attrs['required'] = 'true'
 
     def clean(self):
+        if not self.event.ticket_sale_enabled:
+            raise forms.ValidationError(_("Ticket sale isn't enabled"))
+
         data = super(MPRegisterForm, self).clean()
 
         confirm_email = data.get('confirm_email', None)

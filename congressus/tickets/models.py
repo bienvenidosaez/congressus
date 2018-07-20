@@ -13,7 +13,7 @@ from django.template.loader import get_template
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from events.models import Event, InvCode
 from events.models import Session
@@ -234,13 +234,15 @@ class BaseExtraData:
 
     def get_extras_dict(self):
         extras = {}
-        for field in self.event().fields.all():
+        # excluding html, we don't want to show in visualization
+        for field in self.event().fields.exclude(type='html'):
             extras[field.label] = self.get_extra_data(field.label)
         return extras
 
     def get_extras(self):
         extras = []
-        for field in self.event().fields.all():
+        # excluding html, we don't want to show in visualization
+        for field in self.event().fields.exclude(type='html'):
             extras.append({
                 'field': field,
                 'value': self.get_extra_data(field.label)
@@ -281,7 +283,7 @@ class BaseExtraData:
 
 
 class MultiPurchase(models.Model, BaseTicketMixing, BaseExtraData):
-    ev = models.ForeignKey(Event, related_name='mps', verbose_name=_('event'))
+    ev = models.ForeignKey(Event, related_name='mps', verbose_name=_('event'), on_delete=models.CASCADE)
 
     order = models.CharField(_('order'), max_length=200, unique=True)
     order_tpv = models.CharField(_('order TPV'), max_length=12, blank=True, null=True)
@@ -296,7 +298,7 @@ class MultiPurchase(models.Model, BaseTicketMixing, BaseExtraData):
     confirmed = models.BooleanField(_('confirmed'), default=False)
     confirm_sent = models.BooleanField(_('confirmation sent'), default=False)
     discount = models.ForeignKey(Discount, related_name='mps', verbose_name=_('discount'),
-            blank=True, null=True)
+            blank=True, null=True, on_delete=models.CASCADE)
 
     # Form Fields
     email = models.EmailField(_('email'))
@@ -395,9 +397,9 @@ class MultiPurchase(models.Model, BaseTicketMixing, BaseExtraData):
 
 
 class Ticket(models.Model, BaseTicketMixing, BaseExtraData):
-    session = models.ForeignKey(Session, related_name='tickets', verbose_name=_('event'))
+    session = models.ForeignKey(Session, related_name='tickets', verbose_name=_('event'), on_delete=models.CASCADE)
 
-    inv = models.OneToOneField(InvCode, blank=True, null=True, verbose_name=_('invitation code'))
+    inv = models.OneToOneField(InvCode, blank=True, null=True, verbose_name=_('invitation code'), on_delete=models.CASCADE)
 
     order = models.CharField(_('order'), max_length=200, unique=True)
     order_tpv = models.CharField(_('order TPV'), max_length=12, blank=True, null=True)
@@ -415,13 +417,13 @@ class Ticket(models.Model, BaseTicketMixing, BaseExtraData):
 
     # row-col
     seat = models.CharField(_('seat'), max_length=20, null=True, blank=True)
-    seat_layout = models.ForeignKey(SeatLayout, null=True, blank=True, verbose_name=_('seat layout'))
+    seat_layout = models.ForeignKey(SeatLayout, null=True, blank=True, verbose_name=_('seat layout'), on_delete=models.CASCADE)
 
     # Form Fields
     email = models.EmailField(_('email'))
     extra_data = models.TextField(_('extra data'), blank=True, null=True)
 
-    mp = models.ForeignKey(MultiPurchase, related_name='tickets', null=True, blank=True, verbose_name=_('multipurchase'))
+    mp = models.ForeignKey(MultiPurchase, related_name='tickets', null=True, blank=True, verbose_name=_('multipurchase'), on_delete=models.CASCADE)
 
     # duplicated data to optimize queries
     session_name = models.CharField(_('session name'), max_length=200, null=True, blank=True)
@@ -542,7 +544,7 @@ class Ticket(models.Model, BaseTicketMixing, BaseExtraData):
 class TicketWarning(models.Model):
     name = models.CharField(max_length=50)
 
-    ev = models.ForeignKey(Event, related_name='warnings', verbose_name=_('event'))
+    ev = models.ForeignKey(Event, related_name='warnings', verbose_name=_('event'), on_delete=models.CASCADE)
     sessions1 = models.ManyToManyField(Session, related_name='warnings1', verbose_name=_('sessions1'))
     sessions2 = models.ManyToManyField(Session, related_name='warnings2', verbose_name=_('sessions2'))
     message = models.TextField(_('message'))
@@ -564,8 +566,8 @@ class TicketWarning(models.Model):
 
 class TicketSeatHold(models.Model):
     client = models.CharField(_('client'), max_length=20)
-    session = models.ForeignKey(Session, related_name='seat_holds', verbose_name=_('session'))
-    layout = models.ForeignKey(SeatLayout, verbose_name=_('layout'))
+    session = models.ForeignKey(Session, related_name='seat_holds', verbose_name=_('session'), on_delete=models.CASCADE)
+    layout = models.ForeignKey(SeatLayout, verbose_name=_('layout'), on_delete=models.CASCADE)
     seat = models.CharField(_('seat'), max_length=20, help_text="row-col")
     date = models.DateTimeField(auto_now_add=True)
     type = models.CharField(_('type'), max_length=2, choices=SEATHOLD_TYPES, default="H")

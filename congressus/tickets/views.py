@@ -25,7 +25,7 @@ from django.views.generic import View
 
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect, render
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.contrib.auth.mixins import UserPassesTestMixin
 
 from django.views.decorators.csrf import csrf_exempt
@@ -115,7 +115,7 @@ class MultiPurchaseView(TemplateView):
             client = ''.join(random.choice(string.hexdigits) for _ in range(20))
             self.request.session['client'] = client
 
-        authenticated_user = self.request.user.is_authenticated()
+        authenticated_user = self.request.user.is_authenticated
         if not authenticated_user:
             # Expired time reset. If not new client
             seathold_update(client, type='H')
@@ -380,13 +380,22 @@ class Thanks(TemplateView):
         ctx = super(Thanks, self).get_context_data(*args, **kwargs)
         ctx['ticket'] = get_ticket_or_404(order=kwargs['order'], confirmed=True)
         return ctx
+
+    def get(self, request, *args, **kwargs):
+        if self.request.GET.get('Ds_MerchantParameters'):
+            mdata = self.request.GET.get('Ds_MerchantParameters', '')
+            sig = self.request.GET.get('Ds_Signature', '')
+            Confirm.confirm_data(mdata, sig)
+            return redirect('thanks', order=kwargs['order'])
+
+        return super().get(request, *args, **kwargs)
+
 thanks = Thanks.as_view()
 
 
 class Confirm(View):
-    def post(self, request):
-        mdata = request.POST.get('Ds_MerchantParameters', '')
-        sig = request.POST.get('Ds_Signature', '')
+    @classmethod
+    def confirm_data(cls, mdata, sig):
         data = tpv_parse_data(mdata, sig)
 
         if not data:
@@ -417,8 +426,13 @@ class Confirm(View):
             raise Http404
 
         tk.confirm()
-
         online_sale(tk)
+
+    def post(self, request):
+        mdata = request.POST.get('Ds_MerchantParameters', '')
+        sig = request.POST.get('Ds_Signature', '')
+        Confirm.confirm_data(mdata, sig)
+
         return HttpResponse("")
 confirm = csrf_exempt(Confirm.as_view())
 
@@ -532,7 +546,7 @@ ajax_layout = AjaxLayout.as_view()
 class TicketTemplatePreview(UserPassesTestMixin, View):
     def test_func(self):
         u = self.request.user
-        return u.is_authenticated() and u.is_superuser
+        return u.is_authenticated and u.is_superuser
 
     def get(self, request, id):
         from events.models import TicketTemplate
@@ -581,7 +595,7 @@ thermal_template_preview = ThermalTicketTemplatePreview.as_view()
 class EmailConfirmPreview(UserPassesTestMixin, View):
     def test_func(self):
         u = self.request.user
-        return u.is_authenticated() and u.is_superuser
+        return u.is_authenticated and u.is_superuser
 
     def get(self, request, id):
         from events.models import ConfirmEmail

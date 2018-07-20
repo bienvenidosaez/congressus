@@ -1,9 +1,7 @@
-from django.conf.urls import url
+from django.urls import path
 from . import views
 
 
 urlpatterns = [
-    url(r'^gen/(?P<ev>[\w-]+)/$', views.gen_invitations, name='gen_invitations'),
+    path('gen/<str:ev>/', views.gen_invitations, name='gen_invitations'),
 ]
-
-

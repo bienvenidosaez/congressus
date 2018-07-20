@@ -65,17 +65,12 @@ INSTALLED_APPS = (
 
 SITE_ID = 1
 
-if os.path.exists(os.path.join(BASE_DIR, 'theme')):
-    print("Custom theme found... Using it")
-    INSTALLED_APPS = ('theme', ) + INSTALLED_APPS
-
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -210,17 +205,41 @@ EXPIRED_SEAT_P = 35*60 # TPV expired: 35 minutes
 
 ROW_RAND = 3
 
-SHOW_TOOLBAR_CALLBACK = False
-
 ACCESS_VALIDATE_INV_HOURS = True
+
+TINYMCE_DEFAULT_CONFIG = {
+    "height": 500,
+    "width": "100%",
+}
+
+DEBUG_TOOLS = True
+REAL_EXTRA_APPS = tuple()
+
+if os.path.exists(os.path.join(BASE_DIR, 'theme')):
+    print("Custom theme found... Using it")
+    INSTALLED_APPS = ('theme', ) + INSTALLED_APPS
+    try:
+        from theme.settings import *
+        REAL_EXTRA_APPS = REAL_EXTRA_APPS + tuple(i for i in EXTRA_APPS if not i in REAL_EXTRA_APPS)
+    except:
+        pass
 
 try:
     from local_settings import *
+    REAL_EXTRA_APPS = REAL_EXTRA_APPS + tuple(i for i in EXTRA_APPS if not i in REAL_EXTRA_APPS)
 except:
     print("NO LOCAL SETTINGS")
 
+if REAL_EXTRA_APPS:
+    INSTALLED_APPS = INSTALLED_APPS + tuple(i for i in REAL_EXTRA_APPS if not i in INSTALLED_APPS)
+
 # Debug toolbar options
-if DEBUG:
+if DEBUG and DEBUG_TOOLS:
+    DEBUG_TOOLBAR_CONFIG = {
+        "SHOW_TOOLBAR_CALLBACK": lambda request: True,
+        "SHOW_COLLAPSED": True,
+    }
+
     DEBUG_TOOLBAR_PANELS = [
         'debug_toolbar.panels.versions.VersionsPanel',
         'debug_toolbar.panels.timer.TimerPanel',
@@ -237,16 +256,16 @@ if DEBUG:
         'debug_toolbar_line_profiler.panel.ProfilingPanel',
     ]
 
-    INSTALLED_APPS = (
+    INSTALLED_APPS = INSTALLED_APPS + (
         'debug_toolbar',
         'debug_toolbar_line_profiler',
         'silk',
-    ) + INSTALLED_APPS
+    )
 
-    MIDDLEWARE_CLASSES = (
+    MIDDLEWARE = (
         'debug_toolbar.middleware.DebugToolbarMiddleware',
         'silk.middleware.SilkyMiddleware',
-    ) + MIDDLEWARE_CLASSES
+    ) + MIDDLEWARE
 
     SILKY_PYTHON_PROFILER = True
     #SILKY_PYTHON_PROFILER_BINARY = True # crate file for view with snakeviz

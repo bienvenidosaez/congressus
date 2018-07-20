@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.shortcuts import get_object_or_404
@@ -20,7 +20,7 @@ class GenInvitationsView(UserPassesTestMixin, TemplateView):
 
     def test_func(self):
         u = self.request.user
-        return u.is_authenticated() and u.is_superuser
+        return u.is_authenticated and u.is_superuser
 
     def get_discounts(self):
         ev = self.kwargs['ev']

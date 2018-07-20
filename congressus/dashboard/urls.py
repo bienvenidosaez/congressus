@@ -1,8 +1,8 @@
-from django.conf.urls import url
+from django.urls import path
 from . import views
 
 
 urlpatterns = [
-    url(r'^(?P<ev>[\w-]+)/list/$', views.dlist, name='dashboard_list'),
-    url(r'^(?P<ev>[\w-]+)/(?P<dash>[\w-]+)/$', views.general, name='dashboard_general'),
+    path('<str:ev>/list/', views.dlist, name='dashboard_list'),
+    path('<str:ev>/<str:dash>/', views.general, name='dashboard_general'),
 ]
