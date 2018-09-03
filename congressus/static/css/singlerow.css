@@ -1,0 +1,52 @@
+h1 {
+    text-align: center;
+    font-size: 90px;
+}
+
+html, body {
+    padding:0;
+    margin:0;
+    height:100%;
+    min-height:100%;
+}
+
+.w60 {
+    width:60%;
+    height:100%;
+    float:left;
+    text-align: center;
+}
+
+.w40 {
+    width:40%;
+    height:100%;
+    float:left;
+    text-align: center;
+}
+
+.contents {
+    height:50%;
+    width:100%;
+}
+
+video, img {
+    max-width: 100%;
+    max-height: auto;
+    padding: 5px;
+    text-align: center;
+}
+
+#floatdebug {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.big-number {
+    font-size: 12em;
+    text-align: center;
+    border: black solid 2px;
+    background: lightblue;
+    border-radius: 50px;
+    margin: 5%;
+}
