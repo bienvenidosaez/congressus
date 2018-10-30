@@ -53,3 +53,7 @@
 .bg-open {
     background: #5cb85c;
 }
+
+#extra-field {
+    margin-bottom: 10px;
+}

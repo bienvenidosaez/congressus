@@ -93,6 +93,7 @@ class WindowMultiPurchase(UserPassesTestMixin, MultiPurchaseView):
         ctx['default_pf'] = self.DEFAULT_PF
         ctx['discounts'] = self.get_discounts()
         ctx['window_status'] = _('Opened') if w.singlerow else _('Closed')
+        ctx['extra_field'] = w.event.fields.filter(show_in_tws=True).first()
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -100,6 +101,9 @@ class WindowMultiPurchase(UserPassesTestMixin, MultiPurchaseView):
 
         ids = [(i[len('number_'):], request.POST[i]) for i in request.POST if i.startswith('number_')]
         seats = [(i[len('seats_'):], request.POST[i].split(',')) for i in request.POST if i.startswith('seats_')]
+        extra_field = w.event.fields.filter(show_in_tws=True).first()
+        if extra_field:
+            extra_field_val = request.POST.get('extra-field', None)
         print_format = request.POST.get('print-format', self.DEFAULT_PF)
         discount = request.POST.get('discount', '')
         if discount:
@@ -127,10 +131,13 @@ class WindowMultiPurchase(UserPassesTestMixin, MultiPurchaseView):
             if discount:
                 mp.discount = discount
                 mp.price = mp.get_window_price(window=w)
+            if extra_field and extra_field_val:
+                mp.set_extra_data(extra_field.label, extra_field_val)
             mp.confirm(method="twcash" if payment == 'cash' else 'twtpv')
             for tk in mp.tickets.all():
                 tk.sold_in_window = True
                 tk.price = tk.get_window_price(window=w)
+                tk.update_mp_extra_data()
                 tk.save()
 
             price = float(data.get('price', 0))
